@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { DailyLog } from '@/lib/types'
 
@@ -46,14 +47,26 @@ function int(val: string) {
 }
 
 export default function LogPage() {
+  const searchParams = useSearchParams()
   const [form, setForm] = useState<FormData>(emptyForm())
   const [sleepH, setSleepH] = useState('')
   const [sleepM, setSleepM] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'saved' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
+  const [stravaStatus, setStravaStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle')
+  const [stravaConnected, setStravaConnected] = useState(false)
+  const [stravaMsg, setStravaMsg] = useState('')
 
   useEffect(() => {
     loadEntry(form.date)
+    // Check Strava connection
+    supabase.from('strava_tokens').select('id').limit(1).then(({ data }) => {
+      setStravaConnected(!!(data && data.length > 0))
+    })
+    // Show connection result from OAuth redirect
+    const stravaParam = searchParams.get('strava')
+    if (stravaParam === 'connected') setStravaMsg('✓ Strava connected!')
+    if (stravaParam === 'error') setStravaMsg('Strava connection failed — try again')
   }, [])
 
   async function loadEntry(date: string) {
@@ -85,9 +98,43 @@ export default function LogPage() {
     else { setStatus('saved'); setTimeout(() => setStatus('idle'), 2000) }
   }
 
+  async function syncStrava() {
+    setStravaStatus('syncing')
+    const res = await fetch(`/api/strava/sync?date=${form.date}`)
+    const data = await res.json()
+    if (res.ok) {
+      setStravaStatus('synced')
+      setStravaMsg(`✓ Synced: ${data.activity} (${data.distance_km}km, ${data.duration_min}min)`)
+      loadEntry(form.date)
+      setTimeout(() => setStravaStatus('idle'), 3000)
+    } else {
+      setStravaStatus('error')
+      setStravaMsg(data.error ?? 'Sync failed')
+      setTimeout(() => setStravaStatus('idle'), 3000)
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold">Daily Log</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold">Daily Log</h1>
+        {stravaConnected ? (
+          <button type="button" onClick={syncStrava} disabled={stravaStatus === 'syncing'}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-400 text-sm hover:bg-orange-500/20 disabled:opacity-50 transition-colors">
+            <span>🔄</span>
+            {stravaStatus === 'syncing' ? 'Syncing…' : 'Sync Strava'}
+          </button>
+        ) : (
+          <a href="/api/strava/auth"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-400 text-sm hover:bg-orange-500/20 transition-colors">
+            <span>🔗</span> Connect Strava
+          </a>
+        )}
+      </div>
+
+      {stravaMsg && (
+        <p className={`text-sm ${stravaMsg.startsWith('✓') ? 'text-[#1D9E75]' : 'text-red-400'}`}>{stravaMsg}</p>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Date */}
