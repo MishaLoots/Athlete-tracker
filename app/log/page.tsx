@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { DailyLog } from '@/lib/types'
@@ -46,7 +46,7 @@ function int(val: string) {
   return isNaN(n) ? null : n
 }
 
-export default function LogPage() {
+function LogPageInner() {
   const searchParams = useSearchParams()
   const [form, setForm] = useState<FormData>(emptyForm())
   const [sleepH, setSleepH] = useState('')
@@ -245,6 +245,14 @@ export default function LogPage() {
         {status === 'error' && <p className="text-red-400 text-sm">{errorMsg}</p>}
       </form>
     </div>
+  )
+}
+
+export default function LogPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-gray-500">Loading…</div>}>
+      <LogPageInner />
+    </Suspense>
   )
 }
 
