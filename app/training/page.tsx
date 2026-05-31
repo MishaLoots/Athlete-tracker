@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { supabase } from '@/lib/supabase'
 import TrainingCharts from '@/components/TrainingCharts'
 import { DailyLog } from '@/lib/types'

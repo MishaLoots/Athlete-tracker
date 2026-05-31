@@ -1,23 +1,74 @@
+export const dynamic = 'force-dynamic'
+
 import { supabase } from '@/lib/supabase'
 import NutritionCharts from '@/components/NutritionCharts'
-import MetricCard from '@/components/MetricCard'
-import { DailyLog } from '@/lib/types'
+import { DailyLog, Goals } from '@/lib/types'
+
+type DayType = 'rest' | 'easy' | 'hard' | 'race'
+
+function getDayType(activityType: string | null): DayType {
+  if (!activityType || activityType === 'rest') return 'rest'
+  if (['road', 'gravel', 'mtb', 'zwift'].includes(activityType)) return 'easy'
+  if (activityType === 'gym' || activityType === 'karate') return 'easy'
+  return 'easy'
+}
+
+function getTargets(goals: Goals | null, dayType: DayType) {
+  if (!goals) return { calories: 2000, protein: 200, carbs: 130, fat: 80 }
+  return {
+    calories: goals[`cal_${dayType}` as keyof Goals] as number ?? 2000,
+    protein: goals.protein_target ?? 200,
+    carbs: goals[`carbs_${dayType}` as keyof Goals] as number ?? 130,
+    fat: goals.fat_target ?? 80,
+  }
+}
+
+function ProgressBar({ label, actual, target, color }: { label: string; actual: number; target: number; color: string }) {
+  const pct = Math.min(100, Math.round((actual / target) * 100))
+  const over = actual > target
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-sm">
+        <span className="text-gray-400">{label}</span>
+        <span className={over ? 'text-amber-400' : 'text-gray-300'}>
+          {actual}<span className="text-gray-600"> / {target}</span>
+        </span>
+      </div>
+      <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full transition-all ${over ? 'bg-amber-400' : color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <p className="text-xs text-gray-600">{pct}% of target</p>
+    </div>
+  )
+}
 
 async function getData() {
+  const today = new Date().toISOString().split('T')[0]
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-  const { data } = await supabase
-    .from('daily_log')
-    .select('date, protein_g, carbs_g, fat_g, calories_kcal, sugar_notes')
-    .gte('date', thirtyDaysAgo.toISOString().split('T')[0])
-    .order('date', { ascending: false })
+  const [logsRes, goalsRes] = await Promise.all([
+    supabase
+      .from('daily_log')
+      .select('date, protein_g, carbs_g, fat_g, calories_kcal, sugar_notes, activity_type')
+      .gte('date', thirtyDaysAgo.toISOString().split('T')[0])
+      .order('date', { ascending: false }),
+    supabase.from('goals').select('*').limit(1).single(),
+  ])
 
-  return (data as DailyLog[]) ?? []
+  return {
+    logs: (logsRes.data as DailyLog[]) ?? [],
+    goals: goalsRes.data as Goals | null,
+    today,
+  }
 }
 
 export default async function NutritionPage() {
-  const logs = await getData()
+  const { logs, goals, today } = await getData()
+
+  const todayLog = logs.find((l) => l.date === today)
+  const dayType = getDayType(todayLog?.activity_type ?? null)
+  const targets = getTargets(goals, dayType)
 
   const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7)
   const weekLogs = logs.filter((l) => new Date(l.date) >= weekAgo)
@@ -33,26 +84,67 @@ export default async function NutritionPage() {
   const sugarFlags = weekLogs.filter((l) => l.sugar_notes && l.sugar_notes.trim() !== '')
   const cleanDays = weekLogs.filter((l) => !l.sugar_notes || l.sugar_notes.trim() === '').length
 
-  // Protein compliance last 30 days
   const logged = logs.filter((l) => l.protein_g !== null)
   const proteinCompliance = logged.length
-    ? Math.round((logged.filter((l) => (l.protein_g ?? 0) >= 200).length / logged.length) * 100)
+    ? Math.round((logged.filter((l) => (l.protein_g ?? 0) >= (goals?.protein_target ?? 200)).length / logged.length) * 100)
     : null
 
-  // Sugar audit — all time from loaded range
   const allSugarFlags = logs.filter((l) => l.sugar_notes && l.sugar_notes.trim() !== '')
+
+  const dayTypeLabels: Record<DayType, string> = {
+    rest: 'Rest day',
+    easy: 'Easy training',
+    hard: 'Hard training',
+    race: 'Race / long ride',
+  }
 
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-bold">Nutrition</h1>
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        <MetricCard label="Avg Protein 7d" value={avgProtein7d} unit="g" color={avgProtein7d && avgProtein7d >= 200 ? 'green' : 'amber'} />
-        <MetricCard label="Avg Calories 7d" value={avgCalories7d} unit="kcal" />
-        <MetricCard label="Sugar Flags" value={sugarFlags.length} color={sugarFlags.length > 0 ? 'red' : 'green'} />
-        <MetricCard label="Clean Days" value={cleanDays} color="green" />
+      {/* Today's targets */}
+      <div className="bg-gray-900 rounded-xl p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-gray-500 uppercase tracking-wide">Today's Targets</p>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">
+            {dayTypeLabels[dayType]}
+          </span>
+        </div>
+        {todayLog ? (
+          <div className="space-y-4">
+            <ProgressBar label="Calories" actual={todayLog.calories_kcal ?? 0} target={targets.calories} color="bg-blue-400" />
+            <ProgressBar label="Protein (g)" actual={todayLog.protein_g ?? 0} target={targets.protein} color="bg-[#1D9E75]" />
+            <ProgressBar label="Carbs (g)" actual={todayLog.carbs_g ?? 0} target={targets.carbs} color="bg-purple-400" />
+            <ProgressBar label="Fat (g)" actual={todayLog.fat_g ?? 0} target={targets.fat} color="bg-amber-400" />
+          </div>
+        ) : (
+          <p className="text-sm text-gray-600">No entry logged for today yet.</p>
+        )}
       </div>
 
+      {/* Weekly summary */}
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        <div className="bg-gray-900 rounded-xl p-4">
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Avg Protein 7d</p>
+          <p className={`text-2xl font-semibold ${avgProtein7d && avgProtein7d >= (goals?.protein_target ?? 200) ? 'text-[#1D9E75]' : 'text-amber-400'}`}>
+            {avgProtein7d ?? '—'}<span className="text-sm text-gray-500 ml-1">g</span>
+          </p>
+        </div>
+        <div className="bg-gray-900 rounded-xl p-4">
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Avg Calories 7d</p>
+          <p className="text-2xl font-semibold text-gray-100">{avgCalories7d ?? '—'}<span className="text-sm text-gray-500 ml-1">kcal</span></p>
+        </div>
+        <div className="bg-gray-900 rounded-xl p-4">
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Sugar Flags</p>
+          <p className={`text-2xl font-semibold ${sugarFlags.length > 0 ? 'text-red-400' : 'text-[#1D9E75]'}`}>{sugarFlags.length}</p>
+        </div>
+        <div className="bg-gray-900 rounded-xl p-4">
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Clean Days</p>
+          <p className="text-2xl font-semibold text-[#1D9E75]">{cleanDays}</p>
+        </div>
+      </div>
+
+      {/* Protein compliance */}
       {proteinCompliance !== null && (
         <div className="bg-gray-900 rounded-xl p-4">
           <div className="flex justify-between items-center mb-2">
@@ -62,7 +154,7 @@ export default async function NutritionPage() {
           <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
             <div className="h-full bg-[#1D9E75] rounded-full" style={{ width: `${proteinCompliance}%` }} />
           </div>
-          <p className="text-xs text-gray-600 mt-1">Days hitting 200g target out of {logged.length} logged days</p>
+          <p className="text-xs text-gray-600 mt-1">Days hitting {goals?.protein_target ?? 200}g target out of {logged.length} logged days</p>
         </div>
       )}
 

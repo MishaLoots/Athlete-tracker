@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { supabase } from '@/lib/supabase'
 import TrendsCharts from '@/components/TrendsCharts'
 import { DailyLog } from '@/lib/types'

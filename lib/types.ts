@@ -27,6 +27,16 @@ export type Goals = {
   weight_start: number
   weight_target: number
   ftp_watts: number
+  cal_rest: number
+  cal_easy: number
+  cal_hard: number
+  cal_race: number
+  carbs_rest: number
+  carbs_easy: number
+  carbs_hard: number
+  carbs_race: number
+  fat_target: number
+  protein_target: number
 }
 
 export type Race = {
