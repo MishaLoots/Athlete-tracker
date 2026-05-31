@@ -47,27 +47,30 @@ async function getData() {
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-  const [logsRes, goalsRes] = await Promise.all([
+  const [logsRes, goalsRes, planRes] = await Promise.all([
     supabase
       .from('daily_log')
       .select('date, protein_g, carbs_g, fat_g, calories_kcal, sugar_notes, activity_type')
       .gte('date', thirtyDaysAgo.toISOString().split('T')[0])
       .order('date', { ascending: false }),
     supabase.from('goals').select('*').limit(1).single(),
+    supabase.from('weekly_plan').select('date, day_type, activity_type').eq('date', today).maybeSingle(),
   ])
 
   return {
     logs: (logsRes.data as DailyLog[]) ?? [],
     goals: goalsRes.data as Goals | null,
     today,
+    todayPlan: planRes.data as { day_type: string | null; activity_type: string | null } | null,
   }
 }
 
 export default async function NutritionPage() {
-  const { logs, goals, today } = await getData()
+  const { logs, goals, today, todayPlan } = await getData()
 
   const todayLog = logs.find((l) => l.date === today)
-  const dayType = getDayType(todayLog?.activity_type ?? null)
+  // Use plan day_type if logged, otherwise derive from activity
+  const dayType = (todayPlan?.day_type as DayType | null) ?? getDayType(todayLog?.activity_type ?? null)
   const targets = getTargets(goals, dayType)
 
   const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7)
