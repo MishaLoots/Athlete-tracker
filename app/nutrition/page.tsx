@@ -76,15 +76,20 @@ export default async function NutritionPage() {
   const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7)
   const weekLogs = logs.filter((l) => new Date(l.date) >= weekAgo)
   const last7 = logs.slice(0, 7)
+  const weekLogsCount = weekLogs.length  // actual days logged this week, not assumed 7
 
-  const avgProtein7d = last7.length
-    ? Math.round(last7.reduce((s, l) => s + (l.protein_g ?? 0), 0) / last7.length)
+  const last7WithProtein = last7.filter((l) => l.protein_g !== null)
+  const last7WithCalories = last7.filter((l) => l.calories_kcal !== null)
+
+  const avgProtein7d = last7WithProtein.length
+    ? Math.round(last7WithProtein.reduce((s, l) => s + (l.protein_g ?? 0), 0) / last7WithProtein.length)
     : null
-  const avgCalories7d = last7.length
-    ? Math.round(last7.reduce((s, l) => s + (l.calories_kcal ?? 0), 0) / last7.length)
+  const avgCalories7d = last7WithCalories.length
+    ? Math.round(last7WithCalories.reduce((s, l) => s + (l.calories_kcal ?? 0), 0) / last7WithCalories.length)
     : null
 
   const sugarFlags = weekLogs.filter((l) => l.sugar_notes && l.sugar_notes.trim() !== '')
+  // Clean days = logged days with no sugar flag (not "days in week with no flag")
   const cleanDays = weekLogs.filter((l) => !l.sugar_notes || l.sugar_notes.trim() === '').length
 
   const logged = logs.filter((l) => l.protein_g !== null)
@@ -128,22 +133,26 @@ export default async function NutritionPage() {
       {/* Weekly summary */}
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <div className="bg-gray-900 rounded-xl p-4">
-          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Avg Protein 7d</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Avg Protein</p>
           <p className={`text-2xl font-semibold ${avgProtein7d && avgProtein7d >= (goals?.protein_target ?? 200) ? 'text-[#1D9E75]' : 'text-amber-400'}`}>
             {avgProtein7d ?? '—'}<span className="text-sm text-gray-500 ml-1">g</span>
           </p>
+          <p className="text-xs text-gray-600 mt-1">{last7WithProtein.length} day{last7WithProtein.length !== 1 ? 's' : ''} logged</p>
         </div>
         <div className="bg-gray-900 rounded-xl p-4">
-          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Avg Calories 7d</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Avg Calories</p>
           <p className="text-2xl font-semibold text-gray-100">{avgCalories7d ?? '—'}<span className="text-sm text-gray-500 ml-1">kcal</span></p>
+          <p className="text-xs text-gray-600 mt-1">{last7WithCalories.length} day{last7WithCalories.length !== 1 ? 's' : ''} logged</p>
         </div>
         <div className="bg-gray-900 rounded-xl p-4">
           <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Sugar Flags</p>
           <p className={`text-2xl font-semibold ${sugarFlags.length > 0 ? 'text-red-400' : 'text-[#1D9E75]'}`}>{sugarFlags.length}</p>
+          <p className="text-xs text-gray-600 mt-1">of {weekLogsCount} logged</p>
         </div>
         <div className="bg-gray-900 rounded-xl p-4">
           <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Clean Days</p>
           <p className="text-2xl font-semibold text-[#1D9E75]">{cleanDays}</p>
+          <p className="text-xs text-gray-600 mt-1">of {weekLogsCount} logged</p>
         </div>
       </div>
 
@@ -161,7 +170,7 @@ export default async function NutritionPage() {
         </div>
       )}
 
-      <NutritionCharts logs={last7.reverse()} />
+      <NutritionCharts logs={last7.reverse()} goals={goals} />
 
       {/* Sugar audit */}
       <div>
