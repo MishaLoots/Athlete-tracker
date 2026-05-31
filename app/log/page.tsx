@@ -1,0 +1,184 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import { DailyLog } from '@/lib/types'
+
+const ACTIVITY_TYPES = ['road', 'gravel', 'mtb', 'zwift', 'gym', 'karate', 'rest']
+
+function today() {
+  return new Date().toISOString().split('T')[0]
+}
+
+type FormData = Omit<DailyLog, 'id'>
+
+function emptyForm(): FormData {
+  return {
+    date: today(),
+    sleep_hrs: null, hrv_ms: null, rhr_bpm: null, weight_kg: null,
+    fatigue: null, mood: null, soreness: null, nrs_notes: null,
+    protein_g: null, carbs_g: null, fat_g: null, calories_kcal: null, sugar_notes: null,
+    activity_type: null, duration_min: null, tss: null, distance_km: null, training_notes: null,
+  }
+}
+
+function num(val: string) {
+  const n = parseFloat(val)
+  return isNaN(n) ? null : n
+}
+function int(val: string) {
+  const n = parseInt(val)
+  return isNaN(n) ? null : n
+}
+
+export default function LogPage() {
+  const [form, setForm] = useState<FormData>(emptyForm())
+  const [status, setStatus] = useState<'idle' | 'loading' | 'saved' | 'error'>('idle')
+  const [errorMsg, setErrorMsg] = useState('')
+
+  useEffect(() => {
+    loadEntry(form.date)
+  }, [])
+
+  async function loadEntry(date: string) {
+    const { data } = await supabase.from('daily_log').select('*').eq('date', date).maybeSingle()
+    if (data) {
+      const { id, ...rest } = data as DailyLog
+      setForm(rest)
+    } else {
+      setForm({ ...emptyForm(), date })
+    }
+  }
+
+  function handleDate(e: React.ChangeEvent<HTMLInputElement>) {
+    loadEntry(e.target.value)
+  }
+
+  function set(field: keyof FormData, value: string | null) {
+    setForm((f) => ({ ...f, [field]: value }))
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setStatus('loading')
+    const { error } = await supabase.from('daily_log').upsert({ ...form }, { onConflict: 'date' })
+    if (error) { setStatus('error'); setErrorMsg(error.message) }
+    else { setStatus('saved'); setTimeout(() => setStatus('idle'), 2000) }
+  }
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-xl font-bold">Daily Log</h1>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Date */}
+        <div>
+          <label className="label">Date</label>
+          <input type="date" value={form.date} onChange={handleDate}
+            className="input" />
+        </div>
+
+        {/* Morning NRS */}
+        <section className="bg-gray-900 rounded-xl p-4 space-y-4">
+          <h2 className="text-sm font-semibold text-[#1D9E75] uppercase tracking-wide">Morning NRS</h2>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Field label="Sleep (hrs)">
+              <input type="number" step="0.5" min="0" max="24" value={form.sleep_hrs ?? ''} onChange={(e) => set('sleep_hrs', e.target.value ? String(num(e.target.value)) : null)} className="input" />
+            </Field>
+            <Field label="HRV (ms)">
+              <input type="number" value={form.hrv_ms ?? ''} onChange={(e) => set('hrv_ms', e.target.value ? String(int(e.target.value)) : null)} className="input" />
+            </Field>
+            <Field label="RHR (bpm)">
+              <input type="number" value={form.rhr_bpm ?? ''} onChange={(e) => set('rhr_bpm', e.target.value ? String(int(e.target.value)) : null)} className="input" />
+            </Field>
+            <Field label="Weight (kg)">
+              <input type="number" step="0.1" value={form.weight_kg ?? ''} onChange={(e) => set('weight_kg', e.target.value ? String(num(e.target.value)) : null)} className="input" />
+            </Field>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="Fatigue (1-10)">
+              <input type="number" min="1" max="10" value={form.fatigue ?? ''} onChange={(e) => set('fatigue', e.target.value ? String(int(e.target.value)) : null)} className="input" />
+            </Field>
+            <Field label="Mood (1-10)">
+              <input type="number" min="1" max="10" value={form.mood ?? ''} onChange={(e) => set('mood', e.target.value ? String(int(e.target.value)) : null)} className="input" />
+            </Field>
+            <Field label="Soreness (1-10)">
+              <input type="number" min="1" max="10" value={form.soreness ?? ''} onChange={(e) => set('soreness', e.target.value ? String(int(e.target.value)) : null)} className="input" />
+            </Field>
+          </div>
+          <Field label="Notes">
+            <textarea value={form.nrs_notes ?? ''} onChange={(e) => set('nrs_notes', e.target.value || null)} className="input resize-none" rows={2} />
+          </Field>
+        </section>
+
+        {/* Nutrition */}
+        <section className="bg-gray-900 rounded-xl p-4 space-y-4">
+          <h2 className="text-sm font-semibold text-blue-400 uppercase tracking-wide">Nutrition</h2>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Field label="Protein (g)">
+              <input type="number" value={form.protein_g ?? ''} onChange={(e) => set('protein_g', e.target.value ? String(int(e.target.value)) : null)} className="input" />
+            </Field>
+            <Field label="Carbs (g)">
+              <input type="number" value={form.carbs_g ?? ''} onChange={(e) => set('carbs_g', e.target.value ? String(int(e.target.value)) : null)} className="input" />
+            </Field>
+            <Field label="Fat (g)">
+              <input type="number" value={form.fat_g ?? ''} onChange={(e) => set('fat_g', e.target.value ? String(int(e.target.value)) : null)} className="input" />
+            </Field>
+            <Field label="Calories (kcal)">
+              <input type="number" value={form.calories_kcal ?? ''} onChange={(e) => set('calories_kcal', e.target.value ? String(int(e.target.value)) : null)} className="input" />
+            </Field>
+          </div>
+          <Field label="Sugar notes (blank = clean day)">
+            <input type="text" value={form.sugar_notes ?? ''} onChange={(e) => set('sugar_notes', e.target.value || null)} className="input" placeholder="e.g. afternoon biscuits" />
+          </Field>
+        </section>
+
+        {/* Training */}
+        <section className="bg-gray-900 rounded-xl p-4 space-y-4">
+          <h2 className="text-sm font-semibold text-amber-400 uppercase tracking-wide">Training</h2>
+          <Field label="Activity type">
+            <select value={form.activity_type ?? ''} onChange={(e) => set('activity_type', e.target.value || null)} className="input">
+              <option value="">Select…</option>
+              {ACTIVITY_TYPES.map((t) => (
+                <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+              ))}
+            </select>
+          </Field>
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="Duration (min)">
+              <input type="number" value={form.duration_min ?? ''} onChange={(e) => set('duration_min', e.target.value ? String(int(e.target.value)) : null)} className="input" />
+            </Field>
+            <Field label="TSS">
+              <input type="number" value={form.tss ?? ''} onChange={(e) => set('tss', e.target.value ? String(int(e.target.value)) : null)} className="input" />
+            </Field>
+            <Field label="Distance (km)">
+              <input type="number" step="0.1" value={form.distance_km ?? ''} onChange={(e) => set('distance_km', e.target.value ? String(num(e.target.value)) : null)} className="input" />
+            </Field>
+          </div>
+          <Field label="Notes">
+            <textarea value={form.training_notes ?? ''} onChange={(e) => set('training_notes', e.target.value || null)} className="input resize-none" rows={2} />
+          </Field>
+        </section>
+
+        <button
+          type="submit"
+          disabled={status === 'loading'}
+          className="w-full py-3 rounded-xl font-semibold bg-[#1D9E75] text-white hover:bg-[#18896a] disabled:opacity-50 transition-colors"
+        >
+          {status === 'loading' ? 'Saving…' : status === 'saved' ? '✓ Saved' : 'Save Entry'}
+        </button>
+
+        {status === 'error' && <p className="text-red-400 text-sm">{errorMsg}</p>}
+      </form>
+    </div>
+  )
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs text-gray-500">{label}</label>
+      {children}
+    </div>
+  )
+}
