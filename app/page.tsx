@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase'
 import MetricCard from '@/components/MetricCard'
 import DashboardCharts from '@/components/DashboardCharts'
 import { DailyLog, Race, Goals } from '@/lib/types'
+import { formatSleep } from '@/lib/format'
 
 async function getData() {
   const today = new Date().toISOString().split('T')[0]
@@ -68,7 +69,7 @@ export default async function Dashboard() {
           <MetricCard label="Weight" value={todayLog?.weight_kg ?? currentWeight} unit="kg" />
           <MetricCard label="HRV" value={todayLog?.hrv_ms} unit="ms" color="blue" />
           <MetricCard label="RHR" value={todayLog?.rhr_bpm} unit="bpm" color="blue" />
-          <MetricCard label="Sleep" value={todayLog?.sleep_hrs} unit="hrs" />
+          <MetricCard label="Sleep" value={formatSleep(todayLog?.sleep_hrs)} />
           <MetricCard label="Protein" value={todayLog?.protein_g} unit="g" color={todayLog?.protein_g && todayLog.protein_g >= 200 ? 'green' : 'amber'} />
           <MetricCard label="Calories" value={todayLog?.calories_kcal} unit="kcal" />
         </div>
@@ -135,7 +136,7 @@ export default async function Dashboard() {
               {recentLogs.slice(0, 5).map((log) => (
                 <tr key={log.id} className="border-b border-gray-800/50 last:border-0">
                   <td className="p-3 text-gray-300">{new Date(log.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}</td>
-                  <td className="p-3 text-center text-gray-300">{log.sleep_hrs ?? '—'}</td>
+                  <td className="p-3 text-center text-gray-300">{formatSleep(log.sleep_hrs)}</td>
                   <td className="p-3 text-center text-blue-400">{log.hrv_ms ?? '—'}</td>
                   <td className="p-3 text-center">
                     <span className={log.fatigue && log.fatigue >= 7 ? 'text-red-400' : 'text-gray-300'}>

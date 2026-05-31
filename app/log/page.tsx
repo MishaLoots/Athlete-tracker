@@ -22,6 +22,20 @@ function emptyForm(): FormData {
   }
 }
 
+function sleepToDecimal(h: string, m: string): number | null {
+  const hrs = parseInt(h) || 0
+  const mins = parseInt(m) || 0
+  if (!h && !m) return null
+  return Math.round((hrs + mins / 60) * 100) / 100
+}
+
+function decimalToSleep(val: number | null): { h: string; m: string } {
+  if (val === null) return { h: '', m: '' }
+  const h = Math.floor(val)
+  const m = Math.round((val - h) * 60)
+  return { h: String(h), m: m === 0 ? '00' : String(m).padStart(2, '0') }
+}
+
 function num(val: string) {
   const n = parseFloat(val)
   return isNaN(n) ? null : n
@@ -33,6 +47,8 @@ function int(val: string) {
 
 export default function LogPage() {
   const [form, setForm] = useState<FormData>(emptyForm())
+  const [sleepH, setSleepH] = useState('')
+  const [sleepM, setSleepM] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'saved' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
 
@@ -45,8 +61,11 @@ export default function LogPage() {
     if (data) {
       const { id, ...rest } = data as DailyLog
       setForm(rest)
+      const { h, m } = decimalToSleep(rest.sleep_hrs)
+      setSleepH(h); setSleepM(m)
     } else {
       setForm({ ...emptyForm(), date })
+      setSleepH(''); setSleepM('')
     }
   }
 
@@ -82,8 +101,16 @@ export default function LogPage() {
         <section className="bg-gray-900 rounded-xl p-4 space-y-4">
           <h2 className="text-sm font-semibold text-[#1D9E75] uppercase tracking-wide">Morning NRS</h2>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Field label="Sleep (hrs)">
-              <input type="number" step="0.5" min="0" max="24" value={form.sleep_hrs ?? ''} onChange={(e) => set('sleep_hrs', e.target.value ? String(num(e.target.value)) : null)} className="input" />
+            <Field label="Sleep (h : mm)">
+              <div className="flex gap-1 items-center">
+                <input type="number" min="0" max="24" placeholder="h" value={sleepH}
+                  onChange={(e) => { setSleepH(e.target.value); setForm((f) => ({ ...f, sleep_hrs: sleepToDecimal(e.target.value, sleepM) })) }}
+                  className="input w-14 text-center" />
+                <span className="text-gray-500">:</span>
+                <input type="number" min="0" max="59" placeholder="mm" value={sleepM}
+                  onChange={(e) => { setSleepM(e.target.value); setForm((f) => ({ ...f, sleep_hrs: sleepToDecimal(sleepH, e.target.value) })) }}
+                  className="input w-16 text-center" />
+              </div>
             </Field>
             <Field label="HRV (ms)">
               <input type="number" value={form.hrv_ms ?? ''} onChange={(e) => set('hrv_ms', e.target.value ? String(int(e.target.value)) : null)} className="input" />

@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import TrendsCharts from '@/components/TrendsCharts'
 import { DailyLog } from '@/lib/types'
+import { formatSleep } from '@/lib/format'
 
 async function getData() {
   const ninetyDaysAgo = new Date()
@@ -41,7 +42,7 @@ export default async function TrendsPage() {
                   <td className="p-3 text-gray-400 text-xs whitespace-nowrap">
                     {new Date(log.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}
                   </td>
-                  <td className="p-3 text-gray-300">{log.sleep_hrs ?? '—'}</td>
+                  <td className="p-3 text-gray-300">{formatSleep(log.sleep_hrs)}</td>
                   <td className="p-3 text-blue-400">{log.hrv_ms ?? '—'}</td>
                   <td className="p-3 text-blue-400">{log.rhr_bpm ?? '—'}</td>
                   <td className="p-3 text-gray-300">{log.weight_kg ?? '—'}</td>
