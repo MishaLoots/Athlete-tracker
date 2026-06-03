@@ -19,6 +19,7 @@ export type DailyLog = {
   tss: number | null
   distance_km: number | null
   training_notes: string | null
+  day_type: string | null
 }
 
 export type Goals = {

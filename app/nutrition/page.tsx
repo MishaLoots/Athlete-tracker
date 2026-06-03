@@ -3,24 +3,11 @@ export const dynamic = 'force-dynamic'
 import { supabase } from '@/lib/supabase'
 import NutritionCharts from '@/components/NutritionCharts'
 import { DailyLog, Goals } from '@/lib/types'
+import { DAY_TYPE_TARGETS, DAY_TYPE_LABELS, DayType } from '@/lib/dayTypes'
 
-type DayType = 'rest' | 'easy' | 'hard' | 'race'
-
-function getDayType(activityType: string | null): DayType {
-  if (!activityType || activityType === 'rest') return 'rest'
-  if (['road', 'gravel', 'mtb', 'zwift'].includes(activityType)) return 'easy'
-  if (activityType === 'gym' || activityType === 'karate') return 'easy'
-  return 'easy'
-}
-
-function getTargets(goals: Goals | null, dayType: DayType) {
-  if (!goals) return { calories: 2000, protein: 200, carbs: 130, fat: 80 }
-  return {
-    calories: goals[`cal_${dayType}` as keyof Goals] as number ?? 2000,
-    protein: goals.protein_target ?? 200,
-    carbs: goals[`carbs_${dayType}` as keyof Goals] as number ?? 130,
-    fat: goals.fat_target ?? 80,
-  }
+function getTargets(dayType: string | null) {
+  if (!dayType || !(dayType in DAY_TYPE_TARGETS)) return DAY_TYPE_TARGETS['rest']
+  return DAY_TYPE_TARGETS[dayType as DayType]
 }
 
 function ProgressBar({ label, actual, target, color }: { label: string; actual: number; target: number; color: string }) {
@@ -69,9 +56,9 @@ export default async function NutritionPage() {
   const { logs, goals, today, todayPlan } = await getData()
 
   const todayLog = logs.find((l) => l.date === today)
-  // Use plan day_type if logged, otherwise derive from activity
-  const dayType = (todayPlan?.day_type as DayType | null) ?? getDayType(todayLog?.activity_type ?? null)
-  const targets = getTargets(goals, dayType)
+  // Priority: daily log day_type > plan day_type > default rest
+  const dayType = todayLog?.day_type ?? todayPlan?.day_type ?? 'rest'
+  const targets = getTargets(dayType)
 
   const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7)
   const weekLogs = logs.filter((l) => new Date(l.date) >= weekAgo)
@@ -94,17 +81,10 @@ export default async function NutritionPage() {
 
   const logged = logs.filter((l) => l.protein_g !== null)
   const proteinCompliance = logged.length
-    ? Math.round((logged.filter((l) => (l.protein_g ?? 0) >= (goals?.protein_target ?? 200)).length / logged.length) * 100)
+    ? Math.round((logged.filter((l) => (l.protein_g ?? 0) >= 200).length / logged.length) * 100)
     : null
 
   const allSugarFlags = logs.filter((l) => l.sugar_notes && l.sugar_notes.trim() !== '')
-
-  const dayTypeLabels: Record<DayType, string> = {
-    rest: 'Rest day',
-    easy: 'Easy training',
-    hard: 'Hard training',
-    race: 'Race / long ride',
-  }
 
   return (
     <div className="space-y-6">
@@ -115,7 +95,7 @@ export default async function NutritionPage() {
         <div className="flex items-center justify-between">
           <p className="text-xs text-gray-500 uppercase tracking-wide">Today's Targets</p>
           <span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">
-            {dayTypeLabels[dayType]}
+            {DAY_TYPE_LABELS[dayType as DayType] ?? dayType}
           </span>
         </div>
         {todayLog ? (

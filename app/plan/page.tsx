@@ -2,24 +2,19 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { DAY_TYPES, DAY_TYPE_LABELS, DAY_TYPE_COLORS, DAY_TYPE_TARGETS } from '@/lib/dayTypes'
 
 const ACTIVITY_TYPES = ['road', 'gravel', 'mtb', 'zwift', 'gym', 'karate', 'rest']
 
-const DAY_TYPE_MAP: Record<string, string> = {
+const ACTIVITY_TO_DAY_TYPE: Record<string, string> = {
   road: 'easy', gravel: 'easy', mtb: 'easy', zwift: 'easy',
   gym: 'easy', karate: 'easy', rest: 'rest',
 }
 
-const DAY_TYPE_LABELS: Record<string, string> = {
-  rest: 'Rest', easy: 'Easy', hard: 'Hard', race: 'Race',
-}
-
-const DAY_TYPE_COLORS: Record<string, string> = {
-  rest: 'text-gray-500', easy: 'text-blue-400', hard: 'text-amber-400', race: 'text-[#1D9E75]',
-}
-
 // Priority for determining day's macro target when multiple sessions exist
-const DAY_TYPE_PRIORITY: Record<string, number> = { rest: 0, easy: 1, hard: 2, race: 3 }
+const DAY_TYPE_PRIORITY: Record<string, number> = {
+  rest: 0, recovery: 1, easy: 2, moderate: 3, hard: 4, long: 5, race: 6,
+}
 
 type Session = {
   id?: string
@@ -107,7 +102,7 @@ export default function PlanPage() {
       const list = [...(prev[date] ?? [])]
       const updated = { ...list[idx], [field]: value || null }
       if (field === 'activity_type') {
-        updated.day_type = DAY_TYPE_MAP[value] ?? 'rest'
+        updated.day_type = ACTIVITY_TO_DAY_TYPE[value] ?? 'rest'
       }
       list[idx] = updated
       return { ...prev, [date]: list }
@@ -195,7 +190,7 @@ export default function PlanPage() {
                   <span className={`font-semibold text-sm ${isToday ? 'text-[#1D9E75]' : 'text-gray-200'}`}>{dayName}</span>
                   <span className="text-xs text-gray-600">{dayNum}</span>
                   {dayType && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full bg-gray-800 ${DAY_TYPE_COLORS[dayType]}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full bg-gray-800 ${DAY_TYPE_COLORS[dayType as keyof typeof DAY_TYPE_COLORS] ?? 'text-gray-400'}`}>
                       {DAY_TYPE_LABELS[dayType]}
                     </span>
                   )}
@@ -234,8 +229,13 @@ export default function PlanPage() {
                           <label className="text-xs text-gray-500 mb-1 block">Day type</label>
                           <select value={session.day_type ?? ''} onChange={(e) => updateSession(date, idx, 'day_type', e.target.value)} className="input">
                             <option value="">—</option>
-                            {['rest', 'easy', 'hard', 'race'].map((t) => <option key={t} value={t}>{DAY_TYPE_LABELS[t]}</option>)}
+                            {DAY_TYPES.map((t) => <option key={t} value={t}>{DAY_TYPE_LABELS[t]}</option>)}
                           </select>
+                          {session.day_type && DAY_TYPE_TARGETS[session.day_type as keyof typeof DAY_TYPE_TARGETS] && (
+                            <p className="text-xs text-gray-600 mt-1">
+                              {DAY_TYPE_TARGETS[session.day_type as keyof typeof DAY_TYPE_TARGETS].calories} kcal · {DAY_TYPE_TARGETS[session.day_type as keyof typeof DAY_TYPE_TARGETS].protein}g P · {DAY_TYPE_TARGETS[session.day_type as keyof typeof DAY_TYPE_TARGETS].carbs}g C
+                            </p>
+                          )}
                         </div>
                         <div>
                           <label className="text-xs text-gray-500 mb-1 block">Duration (min)</label>

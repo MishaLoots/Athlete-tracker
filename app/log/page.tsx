@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { DailyLog } from '@/lib/types'
+import { DAY_TYPES, DAY_TYPE_LABELS, DAY_TYPE_TARGETS } from '@/lib/dayTypes'
 
 const ACTIVITY_TYPES = ['road', 'gravel', 'mtb', 'zwift', 'gym', 'karate', 'rest']
 
@@ -20,6 +21,7 @@ function emptyForm(): FormData {
     fatigue: null, mood: null, soreness: null, nrs_notes: null,
     protein_g: null, carbs_g: null, fat_g: null, calories_kcal: null, sugar_notes: null,
     activity_type: null, duration_min: null, tss: null, distance_km: null, training_notes: null,
+    day_type: null,
   }
 }
 
@@ -180,6 +182,22 @@ function LogPageInner() {
               <input type="number" min="1" max="10" value={form.soreness ?? ''} onChange={(e) => set('soreness', e.target.value ? String(int(e.target.value)) : null)} className="input" />
             </Field>
           </div>
+          <Field label="Day Type">
+            <select value={form.day_type ?? ''} onChange={(e) => set('day_type', e.target.value || null)} className="input">
+              <option value="">Select…</option>
+              {DAY_TYPES.map((t) => (
+                <option key={t} value={t}>{DAY_TYPE_LABELS[t]}</option>
+              ))}
+            </select>
+            {form.day_type && DAY_TYPE_TARGETS[form.day_type as keyof typeof DAY_TYPE_TARGETS] && (
+              <p className="text-xs text-gray-600 mt-1">
+                Targets: {DAY_TYPE_TARGETS[form.day_type as keyof typeof DAY_TYPE_TARGETS].calories} kcal ·{' '}
+                {DAY_TYPE_TARGETS[form.day_type as keyof typeof DAY_TYPE_TARGETS].protein}g protein ·{' '}
+                {DAY_TYPE_TARGETS[form.day_type as keyof typeof DAY_TYPE_TARGETS].carbs}g carbs ·{' '}
+                {DAY_TYPE_TARGETS[form.day_type as keyof typeof DAY_TYPE_TARGETS].fat}g fat
+              </p>
+            )}
+          </Field>
           <Field label="Notes">
             <textarea value={form.nrs_notes ?? ''} onChange={(e) => set('nrs_notes', e.target.value || null)} className="input resize-none" rows={2} />
           </Field>
