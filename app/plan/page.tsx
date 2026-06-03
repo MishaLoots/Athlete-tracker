@@ -191,7 +191,7 @@ export default function PlanPage() {
                   <span className="text-xs text-gray-600">{dayNum}</span>
                   {dayType && (
                     <span className={`text-xs px-2 py-0.5 rounded-full bg-gray-800 ${DAY_TYPE_COLORS[dayType as keyof typeof DAY_TYPE_COLORS] ?? 'text-gray-400'}`}>
-                      {DAY_TYPE_LABELS[dayType]}
+                      {DAY_TYPE_LABELS[dayType as keyof typeof DAY_TYPE_LABELS] ?? dayType}
                     </span>
                   )}
                   {daySessions.length > 1 && (
