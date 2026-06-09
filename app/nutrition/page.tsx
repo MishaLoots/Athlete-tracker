@@ -37,11 +37,11 @@ async function getData() {
   const [logsRes, goalsRes, planRes] = await Promise.all([
     supabase
       .from('daily_log')
-      .select('date, protein_g, carbs_g, fat_g, calories_kcal, sugar_notes, activity_type')
+      .select('date, protein_g, carbs_g, fat_g, calories_kcal, sugar_notes, activity_type, day_type')
       .gte('date', thirtyDaysAgo.toISOString().split('T')[0])
       .order('date', { ascending: false }),
     supabase.from('goals').select('*').limit(1).single(),
-    supabase.from('weekly_plan').select('date, day_type, activity_type').eq('date', today).maybeSingle(),
+    supabase.from('weekly_plan').select('date, day_type, activity_type').eq('date', today).order('session_order').limit(1).maybeSingle(),
   ])
 
   return {
