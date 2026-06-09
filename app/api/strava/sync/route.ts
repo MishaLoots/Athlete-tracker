@@ -41,7 +41,7 @@ function mapActivityType(sportType: string, activityName: string): string {
   const name = activityName.toLowerCase()
 
   // Name-based overrides — checked before sport_type map
-  if (name.includes('karate') || name.includes('martial')) return 'karate'
+  if (name.includes('karate') || name.includes('martial') || name === 'afternoon workout') return 'karate'
 
   const map: Record<string, string> = {
     Ride: 'road',
