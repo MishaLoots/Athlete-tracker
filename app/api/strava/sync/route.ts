@@ -30,8 +30,19 @@ async function getFreshToken() {
   return data.access_token
 }
 
-// Map Strava sport_type to our activity_type
-function mapActivityType(sportType: string): string {
+// Priority order for picking the "primary" activity type on a double day
+const ACTIVITY_PRIORITY: Record<string, number> = {
+  race: 7, long: 6, road: 5, gravel: 5, mtb: 5, zwift: 4,
+  hard: 4, moderate: 3, gym: 2, karate: 2, rest: 1,
+}
+
+// Map Strava sport_type + activity name to our activity_type
+function mapActivityType(sportType: string, activityName: string): string {
+  const name = activityName.toLowerCase()
+
+  // Name-based overrides — checked before sport_type map
+  if (name.includes('karate') || name.includes('martial')) return 'karate'
+
   const map: Record<string, string> = {
     Ride: 'road',
     RoadBike: 'road',
@@ -55,14 +66,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Not connected to Strava' }, { status: 401 })
   }
 
-  // Fetch activities for the given date
+  // Fetch ALL activities for the given date (per_page=10 covers any double/triple day)
   const start = new Date(date)
   start.setHours(0, 0, 0, 0)
   const end = new Date(date)
   end.setHours(23, 59, 59, 999)
 
   const res = await fetch(
-    `https://www.strava.com/api/v3/athlete/activities?after=${Math.floor(start.getTime() / 1000)}&before=${Math.floor(end.getTime() / 1000)}&per_page=1`,
+    `https://www.strava.com/api/v3/athlete/activities?after=${Math.floor(start.getTime() / 1000)}&before=${Math.floor(end.getTime() / 1000)}&per_page=10`,
     { headers: { Authorization: `Bearer ${token}` } }
   )
 
@@ -72,38 +83,62 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'No activity found for this date' }, { status: 404 })
   }
 
-  const a = activities[0]
-  const distanceKm = Math.round((a.distance / 1000) * 10) / 10
-  const durationMin = Math.round(a.moving_time / 60)
-  const activityType = mapActivityType(a.sport_type)
+  // Accumulate totals across all sessions
+  let totalDistanceKm = 0
+  let totalDurationMin = 0
+  let totalTss = 0
+  const names: string[] = []
+  let primaryType = 'rest'
+  let primaryPriority = -1
 
-  // Calculate TSS if power data available (rides)
-  let tss: number | null = null
-  if (a.weighted_average_watts && a.moving_time) {
-    const ftp = 285
-    const np = a.weighted_average_watts
-    const if_ = np / ftp
-    tss = Math.round((a.moving_time * np * if_) / (ftp * 3600) * 100)
+  for (const a of activities) {
+    const activityType = mapActivityType(a.sport_type, a.name ?? '')
+    const distanceKm = Math.round((a.distance / 1000) * 10) / 10
+    const durationMin = Math.round(a.moving_time / 60)
+
+    totalDistanceKm += distanceKm
+    totalDurationMin += durationMin
+    names.push(a.name ?? activityType)
+
+    // TSS from power data if available (mainly rides)
+    if (a.weighted_average_watts && a.moving_time) {
+      const ftp = 285
+      const np = a.weighted_average_watts
+      const if_ = np / ftp
+      totalTss += Math.round((a.moving_time * np * if_) / (ftp * 3600) * 100)
+    }
+
+    // Use the highest-priority activity type as the primary for the day
+    const priority = ACTIVITY_PRIORITY[activityType] ?? 0
+    if (priority > primaryPriority) {
+      primaryPriority = priority
+      primaryType = activityType
+    }
   }
 
-  // Upsert into daily_log
+  const finalDistance = Math.round(totalDistanceKm * 10) / 10
+  const finalTss = totalTss > 0 ? totalTss : null
+  const combinedNotes = names.join(' + ')
+
+  // Upsert into daily_log — all sessions combined into one row
   const { error } = await supabase.from('daily_log').upsert({
     date,
-    activity_type: activityType,
-    duration_min: durationMin,
-    distance_km: distanceKm,
-    tss,
-    training_notes: a.name,
+    activity_type: primaryType,
+    duration_min: totalDurationMin,
+    distance_km: finalDistance || null,
+    tss: finalTss,
+    training_notes: combinedNotes,
   }, { onConflict: 'date' })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   return NextResponse.json({
     synced: true,
-    activity: a.name,
-    type: activityType,
-    distance_km: distanceKm,
-    duration_min: durationMin,
-    tss,
+    sessions: activities.length,
+    activity: combinedNotes,
+    type: primaryType,
+    distance_km: finalDistance,
+    duration_min: totalDurationMin,
+    tss: finalTss,
   })
 }

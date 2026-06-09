@@ -106,7 +106,7 @@ function LogPageInner() {
     const data = await res.json()
     if (res.ok) {
       setStravaStatus('synced')
-      setStravaMsg(`✓ Synced: ${data.activity} (${data.distance_km}km, ${data.duration_min}min)`)
+      setStravaMsg(`✓ Synced ${data.sessions > 1 ? `${data.sessions} sessions` : data.activity} · ${data.duration_min}min${data.distance_km ? ` · ${data.distance_km}km` : ""}${data.tss ? ` · TSS ${data.tss}` : ""}`)
       loadEntry(form.date)
       setTimeout(() => setStravaStatus('idle'), 3000)
     } else {
