@@ -11,7 +11,7 @@ async function getData() {
 
   const { data } = await supabase
     .from('daily_log')
-    .select('date, weight_kg, hrv_ms, rhr_bpm, sleep_hrs, fatigue, mood, soreness')
+    .select('date, weight_kg, hrv_ms, rhr_bpm, sleep_hrs, fatigue, mood, soreness, calories_kcal, day_type')
     .gte('date', ninetyDaysAgo.toISOString().split('T')[0])
     .order('date', { ascending: true })
 
