@@ -20,7 +20,7 @@ function emptyForm(): FormData {
     sleep_hrs: null, hrv_ms: null, rhr_bpm: null, weight_kg: null,
     fatigue: null, mood: null, soreness: null, nrs_notes: null,
     protein_g: null, carbs_g: null, fat_g: null, calories_kcal: null, sugar_notes: null,
-    activity_type: null, duration_min: null, tss: null, distance_km: null, training_notes: null,
+    activity_type: null, duration_min: null, tss: null, distance_km: null, training_notes: null, calories_burned: null,
     day_type: null,
   }
 }
@@ -171,7 +171,7 @@ function LogPageInner() {
               <input type="number" step="0.1" value={form.weight_kg ?? ''} onChange={(e) => set('weight_kg', e.target.value ? String(num(e.target.value)) : null)} className="input" />
             </Field>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <Field label="Fatigue (1-10)">
               <input type="number" min="1" max="10" value={form.fatigue ?? ''} onChange={(e) => set('fatigue', e.target.value ? String(int(e.target.value)) : null)} className="input" />
             </Field>
@@ -236,7 +236,7 @@ function LogPageInner() {
               ))}
             </select>
           </Field>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <Field label="Duration (min)">
               <input type="number" value={form.duration_min ?? ''} onChange={(e) => set('duration_min', e.target.value ? String(int(e.target.value)) : null)} className="input" />
             </Field>
@@ -245,6 +245,9 @@ function LogPageInner() {
             </Field>
             <Field label="Distance (km)">
               <input type="number" step="0.1" value={form.distance_km ?? ''} onChange={(e) => set('distance_km', e.target.value ? String(num(e.target.value)) : null)} className="input" />
+            </Field>
+            <Field label="Calories burned">
+              <input type="number" value={form.calories_burned ?? ''} onChange={(e) => set('calories_burned', e.target.value ? String(int(e.target.value)) : null)} className="input" />
             </Field>
           </div>
           <Field label="Notes">

@@ -23,13 +23,14 @@ export default function TrendsCharts({ logs }: { logs: DailyLog[] }) {
   const last30 = logs.slice(-30)
   const sleepData = last30.map((l) => ({ date: fmt(l.date), value: l.sleep_hrs ?? 0 }))
 
-  // Calorie deficit: target - actual (positive = under target = deficit = good for weight loss)
+  // Calorie deficit: (target + burned) - eaten
   const deficitData = last30
     .filter((l) => l.calories_kcal !== null && l.calories_kcal !== undefined)
     .map((l) => {
       const target = DAY_TYPE_TARGETS[(l.day_type as DayType) ?? 'rest']?.calories ?? DAY_TYPE_TARGETS.rest.calories
-      const deficit = target - (l.calories_kcal ?? 0)
-      return { date: fmt(l.date), deficit, target, actual: l.calories_kcal }
+      const burned = l.calories_burned ?? 0
+      const deficit = (target + burned) - (l.calories_kcal ?? 0)
+      return { date: fmt(l.date), deficit, target, burned, actual: l.calories_kcal }
     })
 
   const avgDeficit = deficitData.length
@@ -58,8 +59,13 @@ export default function TrendsCharts({ logs }: { logs: DailyLog[] }) {
               <Tooltip
                 {...tooltipStyle}
                 formatter={(value: number, name: string) => {
-                  if (name === 'deficit') return [`${value > 0 ? '-' : '+'}${Math.abs(value)} kcal`, value >= 0 ? 'Deficit' : 'Surplus']
+                  if (name === 'deficit') return [`${value >= 0 ? '-' : '+'}${Math.abs(value)} kcal`, value >= 0 ? 'Deficit' : 'Surplus']
                   return [value, name]
+                }}
+              labelFormatter={(label, payload) => {
+                  const d = payload?.[0]?.payload
+                  if (!d) return label
+                  return `${label} · ate ${d.actual} kcal${d.burned ? ` · burned ${d.burned} kcal` : ''} · target ${d.target} kcal`
                 }}
               />
               <ReferenceLine y={0} stroke="#374151" strokeWidth={1} />

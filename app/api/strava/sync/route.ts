@@ -87,6 +87,7 @@ export async function GET(request: NextRequest) {
   let totalDistanceKm = 0
   let totalDurationMin = 0
   let totalTss = 0
+  let totalCaloriesBurned = 0
   const names: string[] = []
   let primaryType = 'rest'
   let primaryPriority = -1
@@ -98,6 +99,7 @@ export async function GET(request: NextRequest) {
 
     totalDistanceKm += distanceKm
     totalDurationMin += durationMin
+    totalCaloriesBurned += a.calories ?? 0
     names.push(a.name ?? activityType)
 
     // TSS from power data if available (mainly rides)
@@ -128,6 +130,7 @@ export async function GET(request: NextRequest) {
     distance_km: finalDistance || null,
     tss: finalTss,
     training_notes: combinedNotes,
+    calories_burned: totalCaloriesBurned > 0 ? totalCaloriesBurned : null,
   }, { onConflict: 'date' })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -140,5 +143,6 @@ export async function GET(request: NextRequest) {
     distance_km: finalDistance,
     duration_min: totalDurationMin,
     tss: finalTss,
+    calories_burned: totalCaloriesBurned > 0 ? totalCaloriesBurned : null,
   })
 }
