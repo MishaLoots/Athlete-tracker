@@ -37,7 +37,7 @@ async function getData() {
   const [logsRes, goalsRes, planRes] = await Promise.all([
     supabase
       .from('daily_log')
-      .select('date, protein_g, carbs_g, fat_g, calories_kcal, sugar_notes, activity_type, day_type, calories_burned')
+      .select('date, protein_g, carbs_g, fat_g, calories_kcal, water_litres, sugar_notes, activity_type, day_type, calories_burned')
       .gte('date', thirtyDaysAgo.toISOString().split('T')[0])
       .order('date', { ascending: false }),
     supabase.from('goals').select('*').limit(1).single(),
@@ -104,6 +104,20 @@ export default async function NutritionPage() {
             <ProgressBar label="Protein (g)" actual={todayLog.protein_g ?? 0} target={targets.protein} color="bg-[#1D9E75]" />
             <ProgressBar label="Carbs (g)" actual={todayLog.carbs_g ?? 0} target={targets.carbs} color="bg-purple-400" />
             <ProgressBar label="Fat (g)" actual={todayLog.fat_g ?? 0} target={targets.fat} color="bg-amber-400" />
+            {/* Water */}
+            <div className="space-y-1 pt-2 border-t border-gray-800">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Water (L)</span>
+                <span className={todayLog.water_litres !== null && (todayLog.water_litres ?? 0) >= 3 ? 'text-[#1D9E75]' : 'text-amber-400'}>
+                  {todayLog.water_litres ?? '—'}<span className="text-gray-600"> / 3.5</span>
+                </span>
+              </div>
+              {todayLog.water_litres !== null && (
+                <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full bg-blue-400 transition-all" style={{ width: `${Math.min(100, ((todayLog.water_litres ?? 0) / 3.5) * 100)}%` }} />
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <p className="text-sm text-gray-600">No entry logged for today yet.</p>

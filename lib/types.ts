@@ -5,6 +5,7 @@ export type DailyLog = {
   hrv_ms: number | null
   rhr_bpm: number | null
   weight_kg: number | null
+  waist_cm: number | null
   fatigue: number | null
   mood: number | null
   soreness: number | null
@@ -13,6 +14,7 @@ export type DailyLog = {
   carbs_g: number | null
   fat_g: number | null
   calories_kcal: number | null
+  water_litres: number | null
   sugar_notes: string | null
   activity_type: string | null
   duration_min: number | null

@@ -17,9 +17,9 @@ type FormData = Omit<DailyLog, 'id'>
 function emptyForm(): FormData {
   return {
     date: today(),
-    sleep_hrs: null, hrv_ms: null, rhr_bpm: null, weight_kg: null,
+    sleep_hrs: null, hrv_ms: null, rhr_bpm: null, weight_kg: null, waist_cm: null,
     fatigue: null, mood: null, soreness: null, nrs_notes: null,
-    protein_g: null, carbs_g: null, fat_g: null, calories_kcal: null, sugar_notes: null,
+    protein_g: null, carbs_g: null, fat_g: null, calories_kcal: null, water_litres: null, sugar_notes: null,
     activity_type: null, duration_min: null, tss: null, distance_km: null, training_notes: null, calories_burned: null,
     day_type: null,
   }
@@ -149,7 +149,7 @@ function LogPageInner() {
         {/* Morning NRS */}
         <section className="bg-gray-900 rounded-xl p-4 space-y-4">
           <h2 className="text-sm font-semibold text-[#1D9E75] uppercase tracking-wide">Morning NRS</h2>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
             <Field label="Sleep (h : mm)">
               <div className="flex gap-1 items-center">
                 <input type="number" min="0" max="24" placeholder="h" value={sleepH}
@@ -169,6 +169,9 @@ function LogPageInner() {
             </Field>
             <Field label="Weight (kg)">
               <input type="number" step="0.1" value={form.weight_kg ?? ''} onChange={(e) => set('weight_kg', e.target.value ? String(num(e.target.value)) : null)} className="input" />
+            </Field>
+            <Field label="Waist (cm) — Wed">
+              <input type="number" step="0.1" value={form.waist_cm ?? ''} onChange={(e) => set('waist_cm', e.target.value ? String(num(e.target.value)) : null)} className="input" placeholder="weekly" />
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -220,6 +223,17 @@ function LogPageInner() {
               <input type="number" value={form.calories_kcal ?? ''} onChange={(e) => set('calories_kcal', e.target.value ? String(int(e.target.value)) : null)} className="input" />
             </Field>
           </div>
+          <Field label="Water (litres)">
+            <div className="flex items-center gap-2">
+              <input type="number" step="0.1" min="0" max="10" value={form.water_litres ?? ''} onChange={(e) => set('water_litres', e.target.value ? String(num(e.target.value)) : null)} className="input flex-1" placeholder="e.g. 3.2" />
+              {form.water_litres !== null && (
+                <span className={`text-xs font-medium ${(form.water_litres ?? 0) >= 3 ? 'text-[#1D9E75]' : (form.water_litres ?? 0) >= 2 ? 'text-amber-400' : 'text-red-400'}`}>
+                  {(form.water_litres ?? 0) >= 3 ? '✓' : (form.water_litres ?? 0) >= 2 ? 'low' : 'poor'}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-gray-600 mt-1">Target 3 – 3.5 L</p>
+          </Field>
           <Field label="Sugar notes (blank = clean day)">
             <input type="text" value={form.sugar_notes ?? ''} onChange={(e) => set('sugar_notes', e.target.value || null)} className="input" placeholder="e.g. afternoon biscuits" />
           </Field>
