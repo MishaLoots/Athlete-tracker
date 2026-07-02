@@ -43,8 +43,9 @@ export default function TrendsCharts({ logs }: { logs: DailyLog[] }) {
       return { date: fmt(l.date), deficit, target, actual: l.calories_kcal, burned, mislabelFlag }
     })
 
-  const avgDeficit = deficitData.length
-    ? Math.round(deficitData.reduce((s, d) => s + d.deficit, 0) / deficitData.length)
+  const last7DeficitData = deficitData.slice(-7)
+  const avg7Deficit = last7DeficitData.length
+    ? Math.round(last7DeficitData.reduce((s, d) => s + d.deficit, 0) / last7DeficitData.length)
     : null
 
   const daysOnTarget = deficitData.filter((d) => d.deficit >= 0).length
@@ -57,11 +58,13 @@ export default function TrendsCharts({ logs }: { logs: DailyLog[] }) {
         <div className="bg-gray-900 rounded-xl p-4">
           <div className="flex items-center justify-between mb-1">
             <p className="text-xs text-gray-500 uppercase tracking-wide">Hit Day-Type Target — last 30 days</p>
-            <span className={`text-xs font-medium ${avgDeficit !== null && avgDeficit >= 0 ? 'text-[#1D9E75]' : 'text-red-400'}`}>
-              {daysOnTarget}/{deficitData.length} days on target
-            </span>
+            {avg7Deficit !== null && (
+              <span className={`text-xs font-medium ${avg7Deficit >= 0 ? 'text-[#1D9E75]' : 'text-red-400'}`}>
+                7d avg: {avg7Deficit >= 0 ? '-' : '+'}{Math.abs(avg7Deficit)} kcal/day
+              </span>
+            )}
           </div>
-          <p className="text-xs text-gray-600 mb-3">Green = under target · Red = over target · avg {avgDeficit !== null && avgDeficit >= 0 ? '-' : '+'}{Math.abs(avgDeficit ?? 0)} kcal/day</p>
+          <p className="text-xs text-gray-600 mb-3">Green = under target · Red = over target · {daysOnTarget}/{deficitData.length} days on target (30d)</p>
           <ResponsiveContainer width="100%" height={160}>
             <BarChart data={deficitData} margin={{ top: 4, right: 0, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
